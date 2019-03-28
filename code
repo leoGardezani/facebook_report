@@ -1,0 +1,32 @@
+import facebook
+import urllib3
+import requests
+import json
+import pprint
+
+token = 'EAACSNsztkCcBAEdlKKg9XX1ybyTy9BTavcd7JIjEMzpC4asV696qoZAGyBw7zesDMDALWJJNYDs4D1qHGpAiCH02Mog3G6A4eHpn9trhfkyawZA1v3w2L7xZCZCVAoAYUMmoynMZByxa72kIVPrAIFrp7U7sj4wGzRQbg0ZC3Oy795m08y9ZBMBOrH3Bx4CMJRnZCDnjNmTfZAQZDZD'
+
+graph = facebook.GraphAPI(access_token = token, version = 3.1)
+dataset_page = graph.request('/riohotel/insights?metric=page_impressions,page_impressions_unique&since=2019-01-01T00:00:00&until=2019-02-01T00:00:00&period=day')
+dataset_posts = graph.request('/riohotel/feed?since=2019-01-01T00:00:00&until=2019-02-01T00:00:00&period=day')
+
+dataList_page = dataset_page['data']
+dataList_posts = dataset_posts['data']
+
+dataset_metric_page_impressions = dataList_page[0]['values']
+dataset_metric_page_impressions_unique = dataList_page[1]['values']
+
+def post_info():
+    for post_number in dataList_posts:
+        get_post_info = graph.request('/'+post_number['id']+'/insights?metric=post_impressions,post_impressions_unique,post_clicks&since=2019-01-01T00:00:00&until=2019-02-01T00:00:00')
+        post_list = get_post_info['data']
+        post_info = post_list[0]
+        get_post_metric_id = post_info['id']
+        post_metric_id = get_post_metric_id[:-35]
+        get_metric_name = post_info['id'][41:-9]
+        get_post_value_list = post_info['values']
+        get_post_metric_list = get_post_value_list[0]
+        post_value = str(get_post_metric_list['value'])
+
+
+post_info()
