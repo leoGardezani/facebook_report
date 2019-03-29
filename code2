@@ -1,0 +1,44 @@
+import facebook
+import urllib3
+import requests
+import json
+import pprint
+import time
+from datetime import date
+
+token = 'EAACSNsztkCcBACXruWcZAIHV3USVnNif7bGHsaXKgghR8lSdlZCP9c8LIeZCyzAdEtV7gqVyGZAn8vHeSxcvV9IloazZB1HqbwXYjsoXZBG69wTrkcAcKZCKxNHDsAfAasJea8G9fG8hjDu3F57vlaP7uycAYPO1xeZAt8HgzPZC1c7MlMkcvNdespSSMjH5iynQZD'
+
+get_start_date = date(2019, 3, 1)
+start_date = str(time.mktime(get_start_date.timetuple()))
+
+get_end_date = date(2019,3,31)
+end_date = str(time.mktime(get_end_date.timetuple()))
+
+graph = facebook.GraphAPI(access_token = token, version = 3.1)
+dataset_page = graph.request('/riohotel/insights?metric=page_fans&since='+ start_date +'&until='+ end_date +'&period=day')
+dataset_posts = graph.request('/riohotel/feed?since='+ start_date +'&until='+ end_date)
+
+dataList_page = dataset_page['data']
+dataList_posts = dataset_posts['data']
+
+def post_info():
+    for post_number in dataList_posts:
+        get_post_info = graph.request('/'+post_number['id']+'/insights?metric=post_impressions,post_impressions_unique,post_clicks&since='+ start_date +'&until='+ end_date)
+        post_list = get_post_info['data']
+        post_info = post_list[0:4]
+        post_id = str(post_info[0]['id'][:-35])
+        post_date = post_number['created_time']
+        post_impressions = post_info[0]['name']
+        post_reach = post_info[1]['name']
+        post_clicks = post_info[2]['name']
+        get_impressions_value = post_list[0]['values']
+        post_impressions_value = str(get_impressions_value[0]['value'])
+        get_reach_value = post_list[1]['values']
+        post_reach_value = str(get_reach_value[0]['value'])
+        get_clicks_value = post_list[2]['values']
+        post_clicks_value = str(get_clicks_value[0]['value'])
+        get_post_text = post_number['message']
+        print('date: ' + post_date + ' id: ' + post_id + ' ' + ' impressions: ' + post_impressions_value + ' reach: ' + post_reach_value + ' clicks: ' + post_clicks_value + ' text: ' + get_post_text)
+        #print(post_date)
+
+post_info()
