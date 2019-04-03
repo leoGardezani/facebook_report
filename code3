@@ -1,0 +1,83 @@
+import facebook
+import urllib3
+import requests
+import json
+import pprint
+import time
+from datetime import date
+import pymongo
+
+connection = pymongo.MongoClient('localhost', 27017)
+database = connection['fb_database']
+collection_posts = database['posts']
+
+token = 'EAACSNsztkCcBADacZCHIfZCfZA0BEqfSWNsHsgP6BeaGahZCpV4iVymZAsPkV39MThAgIbHDkRTxlIvzgJs847gFd2IRNNkovZCRb4fYG82fVWxN2j7C4rNdtmmPLEVP4x4UCFZAdmFTOIA1SA5XCIZC04zwo0ZCU4sxgz31VkBODT0cRLF5EEDQFswQe8SCcnnMZD'
+
+get_start_date = date(2019, 3, 1)
+start_date = str(time.mktime(get_start_date.timetuple()))
+
+get_end_date = date(2019, 3, 31)
+end_date = str(time.mktime(get_end_date.timetuple()))
+
+graph = facebook.GraphAPI(access_token = token, version = 3.1)
+dataset_page = graph.request('/riohotel/insights?metric=page_positive_feedback_by_type&since='+ start_date +'&until='+ end_date + '&period=day')['data']
+dataset_posts = graph.request('/riohotel/feed?since='+ start_date +'&until='+ end_date)['data']
+
+#dataList_page = dataset_page['data']
+#dataList_posts = dataset_posts['data']
+
+def post_info():
+    array = []
+    data = collection_posts.find({})
+    for document in data:
+         array.insert(0,document['_id'])
+
+    for post_number in dataset_posts:
+        get_post_info = graph.request('/'+post_number['id']+'/insights?metric=post_impressions,\
+        post_impressions_unique,\
+        post_clicks,\
+        post_reactions_like_total,\
+        post_reactions_love_total,\
+        post_reactions_wow_total,\
+        post_reactions_haha_total,\
+        post_reactions_sorry_total,\
+        post_reactions_anger_total\
+        &since='+ start_date +'&until='+ end_date)['data'][0:]
+
+        post_impressions_volume = get_post_info[0]['values'][0]['value']
+        post_reach_volume = get_post_info[1]['values'][0]['value']
+        post_clicks_volume = get_post_info[2]['values'][0]['value']
+        post_like_volume = get_post_info[3]['values'][0]['value']
+        post_love_volume = get_post_info[4]['values'][0]['value']
+        post_wow_volume = get_post_info[5]['values'][0]['value']
+        post_haha_volume = get_post_info[6]['values'][0]['value']
+        post_sorry_volume = get_post_info[7]['values'][0]['value']
+        post_anger_volume = get_post_info[8]['values'][0]['value']
+        post_comment_volume = len(graph.request('/' + post_number['id'] + '/comments')['data'])
+
+        get_post_share_volume = graph.request('/' + post_number['id'] + '?fields=shares')
+        post_share_volume = 0
+        if 'shares' in get_post_share_volume:
+            post_share_volume = get_post_share_volume['shares']['count']
+        else:
+            post_share_volume = 0
+
+        get_post_text = post_number['message']
+
+        dataset = {'_id': get_post_info[0]['id'][:-35],'created_time': post_number['created_time'][:-14],
+        'text': get_post_text,
+        'impressions': post_impressions_volume,
+        'reach': post_reach_volume,
+        'clicks': post_clicks_volume,
+        'reactions': post_like_volume + post_love_volume + post_love_volume + post_wow_volume + post_haha_volume + post_sorry_volume + post_anger_volume,
+        'comments': post_comment_volume,
+        'shares': post_share_volume}
+
+        #pprint.pprint(dataset)
+        if post_number['id'] in array:
+            collection_posts.update_one({'_id': post_number['id']}, {'$set': dataset})
+        else:
+            collection_posts.insert_one(dataset)
+
+post_info()
+#database.posts.delete_many({})
