@@ -1,17 +1,17 @@
-import facebook
-import urllib3
-import requests
-import json
-import pprint
-import time
+import facebook, urllib3, requests, json, pprint, time, pymongo, google, sqlite3
 from datetime import date
-import pymongo
+from apiclient.discovery import build
+from oauth2client.service_account import ServiceAccountCredentials
 
-connection = pymongo.MongoClient('localhost', 27017)
-database = connection['fb_database']
+connection_sql = sqlite3.connect('posts.db')
+
+connection_py = pymongo.MongoClient('localhost', 27017)
+database = connection_py['fb_database']
 collection_posts = database['posts']
 
-token = 'EAACSNsztkCcBADacZCHIfZCfZA0BEqfSWNsHsgP6BeaGahZCpV4iVymZAsPkV39MThAgIbHDkRTxlIvzgJs847gFd2IRNNkovZCRb4fYG82fVWxN2j7C4rNdtmmPLEVP4x4UCFZAdmFTOIA1SA5XCIZC04zwo0ZCU4sxgz31VkBODT0cRLF5EEDQFswQe8SCcnnMZD'
+token = 'EAACSNsztkCcBANnbiHdo3CeqOdLuBeLIiyGIyoDs92jm9UhK0C6ewAL4UtckLAWZCrLZC0SjHmyWDRmxuZBzDd0RlLVQN4Y1BEihEPyUJeXuG3ysdl4ZBjjjRpIgW9W0J1iFKwnnVQBbnWYDzP5KpZAEebxssaxw7hRkxd9hZAcZATwpmCF0Vvuul1kT0SkFX6gwa3sncUa7QZDZD'
+
+client = 'riohotel'
 
 get_start_date = date(2019, 3, 1)
 start_date = str(time.mktime(get_start_date.timetuple()))
@@ -20,13 +20,13 @@ get_end_date = date(2019, 3, 31)
 end_date = str(time.mktime(get_end_date.timetuple()))
 
 graph = facebook.GraphAPI(access_token = token, version = 3.1)
-dataset_page = graph.request('/riohotel/insights?metric=page_positive_feedback_by_type&since='+ start_date +'&until='+ end_date + '&period=day')['data']
-dataset_posts = graph.request('/riohotel/feed?since='+ start_date +'&until='+ end_date)['data']
+dataset_page = graph.request('/' + client + '/insights?metric=page_positive_feedback_by_type&since='+ start_date +'&until='+ end_date + '&period=day')['data']
+dataset_posts = graph.request('/'+ client + '/feed?since='+ start_date +'&until='+ end_date)['data']
 
 #dataList_page = dataset_page['data']
 #dataList_posts = dataset_posts['data']
 
-def post_info():
+def post_info_facebook():
     array = []
     data = collection_posts.find({})
     for document in data:
@@ -64,7 +64,10 @@ def post_info():
 
         get_post_text = post_number['message']
 
-        dataset = {'_id': get_post_info[0]['id'][:-35],'created_time': post_number['created_time'][:-14],
+        dataset = {'_id': get_post_info[0]['id'][:-35],
+        'client': client,
+        'platform': 'facebook',
+        'created_time': post_number['created_time'][:-14],
         'text': get_post_text,
         'impressions': post_impressions_volume,
         'reach': post_reach_volume,
@@ -79,5 +82,5 @@ def post_info():
         else:
             collection_posts.insert_one(dataset)
 
-post_info()
+
 #database.posts.delete_many({})
